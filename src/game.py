@@ -116,16 +116,12 @@ class MAIN:
 		self.snake = SNAKE()
 		self.fruit = FRUIT()
 		self.game_data: gameserializer.Game = []
-		self.failed = False
 
 	def update(self):
-		self.failed = False
-
 		self.snake.move_snake()
 		self.check_collision()
-		self.check_fail()
 
-		if not self.failed: self.game_data.append(
+		self.game_data.append(
 			gameserializer.serialize_frame(
 				food_pos=(self.fruit.x, self.fruit.y),
 				snake_pos=[(int(body_piece.x), int(body_piece.y)) for body_piece in self.snake.body],
@@ -133,6 +129,8 @@ class MAIN:
 				direction=self.snake.direction
 			)
 		)
+		
+		self.check_fail()
 
 	def draw_elements(self):
 		self.draw_grass()
@@ -163,7 +161,6 @@ class MAIN:
 
 		self.snake.reset()
 		self.game_data = []
-		self.failed = True # data collection flag
 
 	def draw_grass(self):
 		grass_color = (167,209,61)
