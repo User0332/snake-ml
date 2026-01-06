@@ -8,7 +8,7 @@ import gameserializer
 
 class SNAKE:
 	def __init__(self):
-		self.body = [Vector2(5,10),Vector2(4,10),Vector2(3,10)]
+		self.body = [Vector2(5,5),Vector2(4,5),Vector2(3,5)]
 		self.direction = Vector2(0,0)
 		self.new_block = False
 
@@ -93,7 +93,7 @@ class SNAKE:
 		self.crunch_sound.play()
 
 	def reset(self):
-		self.body = [Vector2(5,10),Vector2(4,10),Vector2(3,10)]
+		self.body = [Vector2(5,5),Vector2(4,5),Vector2(3,5)]
 		self.direction = Vector2(0,0)
 
 
@@ -151,10 +151,12 @@ class MAIN:
 	def check_fail(self):
 		if not 0 <= self.snake.body[0].x < cell_number or not 0 <= self.snake.body[0].y < cell_number:
 			self.game_over()
+			return
 
 		for block in self.snake.body[1:]:
 			if block == self.snake.body[0]:
 				self.game_over()
+				return
 		
 	def game_over(self):
 		if self.game_data: gameserializer.serialize_game(self.game_data)
@@ -193,7 +195,7 @@ class MAIN:
 pygame.mixer.pre_init(44100,-16,2,512)
 pygame.init()
 cell_size = 40
-cell_number = 20
+cell_number = 10
 screen = pygame.display.set_mode((cell_number * cell_size,cell_number * cell_size))
 clock = pygame.time.Clock()
 apple = pygame.image.load('Graphics/apple.png').convert_alpha()
