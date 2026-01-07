@@ -53,4 +53,4 @@ with torch.no_grad():
 accuracy = correct / total * 100
 print(f"Test Accuracy: {accuracy:.2f}%")
 
-torch.save(model, "model.pt")
+torch.save(model.to("cpu"), "model.pt")
