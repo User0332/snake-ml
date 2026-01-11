@@ -29,15 +29,15 @@ def read_games(fname: str='games.dill') -> list[Game]:
 		
 	return data
 
-def serialize_game(game: Game) -> None:
+def serialize_game(game: Game, fname: str='games.dill') -> None:
 	if game[-1].direction == "NONE": return # invalid game, do not serialize
 	
-	try: data: list['Game'] = dill.load(open('games.dill', 'rb'))
+	try: data: list['Game'] = dill.load(open(fname, 'rb'))
 	except FileNotFoundError: data = []
 
 	data.append(game)
 
-	dill.dump(data, open('games.dill', 'wb'))
+	dill.dump(data, open(fname, 'wb'))
 
 
 def serialize_frame(food_pos: tuple[int, int], snake_pos: list[tuple[int, int]], board_size: tuple[int, int], direction: Vector2) -> Turn:

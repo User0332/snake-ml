@@ -1,4 +1,11 @@
+from dataclasses import dataclass
 import gameserializer
+
+@dataclass
+class SplitFrames:
+	early_frames: list[gameserializer.MappedFlattenedTurn]
+	mid_frames: list[gameserializer.MappedFlattenedTurn]
+	late_frames: list[gameserializer.MappedFlattenedTurn]
 
 def flatten_board(board: list[list[float]]) -> list[float]:
 	return [cell for row in board for cell in row]
@@ -102,3 +109,52 @@ def rotate_all_games_to_all_directions(games: gameserializer.Games) -> gameseria
 		all_rotated_games.extend(rotate_game_to_all_directions(game))
 
 	return all_rotated_games
+
+DIRECTION_LABEL_MAP = {
+	"UP": 0,
+	"RIGHT": 1,
+	"DOWN": 2,
+	"LEFT": 3
+}
+
+REVERSE_DIRECTION_LABEL_MAP = {v: k for k, v in DIRECTION_LABEL_MAP.items()}
+
+OPPOSITE_DIRECTION_MAP = {
+	DIRECTION_LABEL_MAP["UP"]: DIRECTION_LABEL_MAP["DOWN"],
+	DIRECTION_LABEL_MAP["DOWN"]: DIRECTION_LABEL_MAP["UP"],
+	DIRECTION_LABEL_MAP["RIGHT"]: DIRECTION_LABEL_MAP["LEFT"],
+	DIRECTION_LABEL_MAP["LEFT"]: DIRECTION_LABEL_MAP["RIGHT"]
+}
+
+def conv_direction_to_y_tensor(direction: str, curr_direction: str) -> list[int]:
+	directions = [0, 0, 0, 0]
+
+	directions[DIRECTION_LABEL_MAP[direction]] = 1
+
+	# opposite direction is invalid, so use 0 to bias against
+
+	# directions[OPPOSITE_DIRECTION_MAP[DIRECTION_LABEL_MAP[curr_direction]]] = 0
+
+	return directions
+
+def split_frames_by_length(games: gameserializer.MappedFlattenedGames, early_thresh: int, mid_thresh: int) -> SplitFrames:
+	early_frames = []
+	mid_frames = []
+	late_frames = []
+
+	for game in games:
+		for frame in game:
+			body_length = frame.body_board.count(1)
+			
+			if body_length <= early_thresh:
+				early_frames.append(frame)
+				continue
+
+			if body_length <= mid_thresh:
+				mid_frames.append(frame)
+				continue
+
+			late_frames.append(frame)
+
+
+	return SplitFrames(early_frames, mid_frames, late_frames)

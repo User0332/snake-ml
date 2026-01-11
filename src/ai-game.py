@@ -7,6 +7,7 @@ from pygame.math import Vector2
 
 import game_proccessing_utils
 import gameserializer
+from processing_constants import COLLECT_REFEED_TRAINING_DATA, EARLY_LENGTH_THRESH, MID_LENGTH_THRESH, USE_MULTIPLE_MODELS, USE_REFEED_TRAINING
 
 class SNAKE:
 	def __init__(self):
@@ -128,22 +129,36 @@ class MAIN:
 	def __init__(self):
 		self.snake = SNAKE()
 		self.fruit = FRUIT()
+		self.game_data: gameserializer.Game = []
 
-		self.model: torch.nn.Module = torch.load("model.pt", weights_only=False)
 		self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
 		print(f"Using device: {self.device}")
 
-		self.model.to(self.device)
+		self.early_model: torch.nn.Module = torch.load("model_early.pt", weights_only=False).to(self.device)
+		
+		if USE_MULTIPLE_MODELS:
+			self.mid_model: torch.nn.Module = torch.load("model_mid.pt", weights_only=False).to(self.device)
+			self.late_model: torch.nn.Module = torch.load("model_late.pt", weights_only=False).to(self.device)
 
-		self.loss_fn = torch.nn.MSELoss()
-		self.optimizer = torch.optim.Adam(self.model.parameters(), lr=0.001)
+		# self.loss_fn = torch.nn.MSELoss()
+		# self.optimizer = torch.optim.Adam(self.model.parameters(), lr=0.001)
 
 		self.last_preds: torch.Tensor
 
 	def update(self):
 		self.snake.move_snake()
 		self.check_collision()
+
+		self.game_data.append(
+			gameserializer.serialize_frame(
+				food_pos=(self.fruit.x, self.fruit.y),
+				snake_pos=[(int(body_piece.x), int(body_piece.y)) for body_piece in self.snake.body],
+				board_size=(cell_number, cell_number),
+				direction=self.snake.direction
+			)
+		)
+
 		self.propagate_fail()
 
 	def draw_elements(self):
@@ -239,6 +254,8 @@ class MAIN:
 		# 		loss.backward()
 		# 		self.optimizer.step()
 
+		if self.game_data and COLLECT_REFEED_TRAINING_DATA: gameserializer.serialize_game(self.game_data, 'refeed-games.dill')
+
 		self.snake.reset()
 		self.game_data = []
 
@@ -290,7 +307,22 @@ class MAIN:
 		# self.model.train()
 		# self.optimizer.zero_grad()
 
-		prediction: torch.Tensor = self.model(flat_board)
+		body_length = len(self.snake.body)-1
+
+		if USE_MULTIPLE_MODELS:
+			if body_length <= EARLY_LENGTH_THRESH:
+				model = self.early_model
+				pygame.display.set_caption(f"using model: early")
+			elif body_length <= MID_LENGTH_THRESH:
+				model = self.mid_model
+				pygame.display.set_caption(f"using model: mid")
+			else:
+				model = self.late_model
+				pygame.display.set_caption(f"using model: late")
+		else:
+			model = self.early_model
+
+		prediction: torch.Tensor = model(flat_board)
 
 		self.last_preds = prediction
 
@@ -338,7 +370,7 @@ apple = pygame.image.load('Graphics/apple.png').convert_alpha()
 game_font = pygame.font.Font('Font/PoetsenOne-Regular.ttf', 25)
 
 SCREEN_UPDATE = pygame.USEREVENT
-pygame.time.set_timer(SCREEN_UPDATE, 100)
+pygame.time.set_timer(SCREEN_UPDATE, 15)
 
 main_game = MAIN()
 
