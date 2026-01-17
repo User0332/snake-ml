@@ -10,7 +10,7 @@ from process_games import (
 )
 from processing_constants import USE_MULTIPLE_MODELS
 
-def train_model(x_tensor: torch.Tensor, y_tensor: torch.Tensor, save_name: str, epochs:int):
+def train_model(x_tensor: torch.Tensor, y_tensor: torch.Tensor, save_name: str, epochs: int, checkpoint_model: str=None):
 	device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 	
 	print(f"Training model {save_name} with device: {device}")
@@ -22,7 +22,11 @@ def train_model(x_tensor: torch.Tensor, y_tensor: torch.Tensor, save_name: str, 
 		x_tensor, y_tensor, test_size=0.2, random_state=42
 	)
 
-	model = Agent(side_length=10)
+	if checkpoint_model:
+		model = torch.load(checkpoint_model)
+	else:
+		model = Agent(side_length=10)
+
 	model = model.to(device)
 
 	loss_fn = nn.MSELoss()
@@ -66,4 +70,4 @@ if USE_MULTIPLE_MODELS:
 	train_model(mid_x_tensor, mid_y_tensor, "model_mid.pt", 5000)
 	train_model(late_x_tensor, late_y_tensor, "model_late.pt", 5000)
 else:
-	train_model(early_x_tensor, early_y_tensor, "model_early.pt", 7000)
+	train_model(early_x_tensor, early_y_tensor, "model_early.pt", 5000)

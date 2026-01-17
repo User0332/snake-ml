@@ -104,7 +104,8 @@ class SNAKE:
 		self.new_block = True
 
 	def play_crunch_sound(self):
-		self.crunch_sound.play()
+		pass
+		# self.crunch_sound.play()
 
 	def reset(self):
 		self.body = [Vector2(5,5),Vector2(4,5),Vector2(3,5)]
@@ -130,6 +131,7 @@ class MAIN:
 		self.snake = SNAKE()
 		self.fruit = FRUIT()
 		self.game_data: gameserializer.Game = []
+		self.scores: list[int] = []
 
 		self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -256,8 +258,20 @@ class MAIN:
 
 		if self.game_data and COLLECT_REFEED_TRAINING_DATA: gameserializer.serialize_game(self.game_data, 'refeed-games.dill')
 
+
+		self.scores.append(game_proccessing_utils.get_score(self.game_data))
+
 		self.snake.reset()
 		self.game_data = []
+
+		if len(self.scores) % 100 == 0:
+			n = len(self.scores)
+			average_score = sum(self.scores)/n
+			highscore = max(self.scores)
+
+			n_highscores = self.scores.count(highscore)
+
+			print(f"Average Score over {n} games: {average_score}, Highscore: {highscore} (hit {n_highscores} times)")
 
 	def draw_grass(self):
 		grass_color = (167,209,61)
@@ -365,18 +379,28 @@ pygame.init()
 cell_size = 40
 cell_number = 10
 screen = pygame.display.set_mode((cell_number * cell_size,cell_number * cell_size))
-clock = pygame.time.Clock()
 apple = pygame.image.load('Graphics/apple.png').convert_alpha()
 game_font = pygame.font.Font('Font/PoetsenOne-Regular.ttf', 25)
 
 SCREEN_UPDATE = pygame.USEREVENT
-pygame.time.set_timer(SCREEN_UPDATE, 15)
+pygame.time.set_timer(SCREEN_UPDATE, 1)
 
 main_game = MAIN()
 
 propagated_key_events: list[pygame.event.Event] = []
 seen_key_event = False
 
+STATS_MODE_ONLY = True
+
+if STATS_MODE_ONLY: # removes graphics bottlenecks and simulates games internally (although the classes currently still hold internal Surface objects)
+	print("Stats mode only enabled")
+	pygame.quit()
+	
+	while True:
+		main_game.bot_decision()
+		main_game.update()
+
+# otherwise, the visualizer here
 while True:
 	for event in pygame.event.get():
 		if event.type == pygame.QUIT:
@@ -386,8 +410,6 @@ while True:
 			main_game.bot_decision()
 			main_game.update()
 	
-
 	screen.fill((175,215,70))
 	main_game.draw_elements()
 	pygame.display.update()
-	clock.tick(120)
