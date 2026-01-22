@@ -2,6 +2,7 @@ import os
 import dill
 import gameserializer
 
+# combine all game data
 games: gameserializer.Games = []
 
 for file in os.listdir():

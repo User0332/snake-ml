@@ -1,3 +1,5 @@
 pygame
 dill
 scikit-learn
+matplotlib
+seaborn

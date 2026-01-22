@@ -1,6 +1,11 @@
-MIN_SCORE_THRESH = 8
-USE_MULTIPLE_MODELS = False
+MIN_SCORE_THRESH = 8 # minimum score threshold to include a game for processing
+
+USE_MULTIPLE_MODELS = False # whether or not to use multiple models for different game stages
+
+# parameters for refeed training (feeding the model's own gameplay back into training data)
 USE_REFEED_TRAINING = False
 COLLECT_REFEED_TRAINING_DATA = False
-EARLY_LENGTH_THRESH = 10 # setting a high thresh causes the same model to be used for all gameplay
+
+# thresholds for splitting gameplay into early, mid, and late stages
+EARLY_LENGTH_THRESH = 10
 MID_LENGTH_THRESH = 25

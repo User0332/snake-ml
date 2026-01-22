@@ -101,11 +101,12 @@ class SNAKE:
 			self.body = body_copy[:]
 
 	def add_block(self):
+		#makes snake longer
 		self.new_block = True
 
 	def play_crunch_sound(self):
 		pass
-		# self.crunch_sound.play()
+		self.crunch_sound.play()
 
 	def reset(self):
 		self.body = [Vector2(5,5),Vector2(4,5),Vector2(3,5)]
@@ -143,8 +144,8 @@ class MAIN:
 			self.mid_model: torch.nn.Module = torch.load("model_mid.pt", weights_only=False).to(self.device)
 			self.late_model: torch.nn.Module = torch.load("model_late.pt", weights_only=False).to(self.device)
 
-		# self.loss_fn = torch.nn.MSELoss()
-		# self.optimizer = torch.optim.Adam(self.model.parameters(), lr=0.001)
+		self.loss_fn = torch.nn.MSELoss()
+		self.optimizer = torch.optim.Adam(self.early_model.parameters(), lr=0.0001)
 
 		self.last_preds: torch.Tensor
 
@@ -193,71 +194,68 @@ class MAIN:
 	def game_over(self):
 		# train model
 
-		# TRAIN_ENABLED = True
+		if TRAIN_ENABLED: # fake training loop that allows the model to learn from its mistakes in real-time; this actually worsens model performance so it is disabled via a flag
+			# move snake back to before death
 
-		# if TRAIN_ENABLED:
-		# 	# move snake back to before death
+			DIRECTION_BEFORE_LOSING = self.snake.last_direction
 
-		# 	DIRECTION_BEFORE_LOSING = self.snake.last_direction
+			self.snake.direction = -self.snake.direction
+			self.snake.move_snake()
 
-		# 	self.snake.direction = -self.snake.direction
-		# 	self.snake.move_snake()
+			self.snake.direction = DIRECTION_BEFORE_LOSING
 
-		# 	self.snake.direction = DIRECTION_BEFORE_LOSING
+			# check squares around snake to find one that would not have resulted in death; choose those directions as the "correct" moves
 
-		# 	# check squares around snake to find one that would not have resulted in death; choose those directions as the "correct" moves
+			correct_direction = [0, 0, 0, 0]
 
-		# 	correct_direction = [0, 0, 0, 0]
+			if self.propagate_bot_decision(0): # UP
+				self.snake.move_snake()
 
-		# 	if self.propagate_bot_decision(0): # UP
-		# 		self.snake.move_snake()
+				if not self.has_failed(): correct_direction[0] = 1
 
-		# 		if not self.has_failed(): correct_direction[0] = 1
+				self.snake.direction = -self.snake.direction 
+				self.snake.move_snake()
 
-		# 		self.snake.direction = -self.snake.direction 
-		# 		self.snake.move_snake()
+				self.snake.direction = DIRECTION_BEFORE_LOSING
 
-		# 		self.snake.direction = DIRECTION_BEFORE_LOSING
+			if self.propagate_bot_decision(1): # RIGHT
+				self.snake.move_snake()
 
-		# 	if self.propagate_bot_decision(1): # RIGHT
-		# 		self.snake.move_snake()
+				if not self.has_failed(): correct_direction[1] = 1
 
-		# 		if not self.has_failed(): correct_direction[1] = 1
+				self.snake.direction = -self.snake.direction 
+				self.snake.move_snake()
 
-		# 		self.snake.direction = -self.snake.direction 
-		# 		self.snake.move_snake()
+				self.snake.direction = DIRECTION_BEFORE_LOSING
 
-		# 		self.snake.direction = DIRECTION_BEFORE_LOSING
+			if self.propagate_bot_decision(2): # DOWN
+				self.snake.move_snake()
 
-		# 	if self.propagate_bot_decision(2): # DOWN
-		# 		self.snake.move_snake()
+				if not self.has_failed(): correct_direction[2] = 1
 
-		# 		if not self.has_failed(): correct_direction[2] = 1
+				self.snake.direction = -self.snake.direction 
+				self.snake.move_snake()
 
-		# 		self.snake.direction = -self.snake.direction 
-		# 		self.snake.move_snake()
+				self.snake.direction = DIRECTION_BEFORE_LOSING
 
-		# 		self.snake.direction = DIRECTION_BEFORE_LOSING
+			if self.propagate_bot_decision(3): # LEFT
+				self.snake.move_snake()
 
-		# 	if self.propagate_bot_decision(3): # LEFT
-		# 		self.snake.move_snake()
+				if not self.has_failed(): correct_direction[3] = 1
 
-		# 		if not self.has_failed(): correct_direction[3] = 1
+				self.snake.direction = -self.snake.direction 
+				self.snake.move_snake()
 
-		# 		self.snake.direction = -self.snake.direction 
-		# 		self.snake.move_snake()
+				self.snake.direction = DIRECTION_BEFORE_LOSING
 
-		# 		self.snake.direction = DIRECTION_BEFORE_LOSING
+			if any(correct_direction): # only train if there is a non-losing direction
+				actual = torch.tensor(correct_direction, dtype=torch.float32).to(self.device)
 
-		# 	if any(correct_direction): # only train if there is a non-losing direction
-		# 		actual = torch.tensor(correct_direction, dtype=torch.float32).to(self.device)
-
-		# 		loss = self.loss_fn(self.last_preds, actual)
-		# 		loss.backward()
-		# 		self.optimizer.step()
+				loss = self.loss_fn(self.last_preds, actual)
+				loss.backward()
+				self.optimizer.step()
 
 		if self.game_data and COLLECT_REFEED_TRAINING_DATA: gameserializer.serialize_game(self.game_data, 'refeed-games.dill')
-
 
 		self.scores.append(game_proccessing_utils.get_score(self.game_data))
 
@@ -302,6 +300,9 @@ class MAIN:
 		pygame.draw.rect(screen,(56,74,12),bg_rect,2)
 
 	def bot_decision(self) -> None:
+		"""Makes a prediction using the trained model(s) and plays the move as if a player did so."""
+
+		# first convert the board into a model-friendly format
 		flattened_board = game_proccessing_utils.flatten_board(
 			gameserializer.serialize_frame(
 					food_pos=(main_game.fruit.x, main_game.fruit.y),
@@ -318,8 +319,9 @@ class MAIN:
 			dtype=torch.float32
 		).to(self.device)
 
-		# self.model.train()
-		# self.optimizer.zero_grad()
+		if TRAIN_ENABLED:
+			self.early_model.train()
+			self.optimizer.zero_grad()
 
 		body_length = len(self.snake.body)-1
 
@@ -383,18 +385,19 @@ apple = pygame.image.load('Graphics/apple.png').convert_alpha()
 game_font = pygame.font.Font('Font/PoetsenOne-Regular.ttf', 25)
 
 SCREEN_UPDATE = pygame.USEREVENT
-pygame.time.set_timer(SCREEN_UPDATE, 1)
+pygame.time.set_timer(SCREEN_UPDATE, 100)
 
 main_game = MAIN()
 
 propagated_key_events: list[pygame.event.Event] = []
 seen_key_event = False
 
+TRAIN_ENABLED = False
 STATS_MODE_ONLY = True
 
 if STATS_MODE_ONLY: # removes graphics bottlenecks and simulates games internally (although the classes currently still hold internal Surface objects)
 	print("Stats mode only enabled")
-	pygame.quit()
+	if not TRAIN_ENABLED: pygame.quit()
 	
 	while True:
 		main_game.bot_decision()

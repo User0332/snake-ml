@@ -1,3 +1,5 @@
+"""Methods for training data serialization and retrieval"""
+
 from dataclasses import dataclass
 import dill
 from pygame import Vector2
@@ -39,7 +41,7 @@ def serialize_game(game: Game, fname: str='games.dill') -> None:
 
 	dill.dump(data, open(fname, 'wb'))
 
-
+# serialize a game into a 2d array representation for storage
 def serialize_frame(food_pos: tuple[int, int], snake_pos: list[tuple[int, int]], board_size: tuple[int, int], direction: Vector2) -> Turn:
 	board = [[0 for _ in range(board_size[1])] for _ in range(board_size[0])]
 

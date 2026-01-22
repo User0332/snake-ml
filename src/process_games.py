@@ -9,7 +9,7 @@ if USE_REFEED_TRAINING: games+=gameserializer.read_games('refeed-games.dill')
 
 games = filter_by_score(games, min_score=MIN_SCORE_THRESH)
 games = truncate_all_at_last_fruit(games)
-# games = rotate_all_games_to_all_directions(games)
+# games = rotate_all_games_to_all_directions(games) # see comment in game_processing_utils.py for why this is unused
 
 mapped_games = map_all_to_next_move(games)
 split_frames = split_frames_by_length(mapped_games, early_thresh=EARLY_LENGTH_THRESH, mid_thresh=MID_LENGTH_THRESH)

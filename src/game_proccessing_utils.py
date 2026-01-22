@@ -1,8 +1,11 @@
 from dataclasses import dataclass
+
+import numpy as np
 import gameserializer
 
 @dataclass
 class SplitFrames:
+	# early - mid - late game models data distribution
 	early_frames: list[gameserializer.MappedFlattenedTurn]
 	mid_frames: list[gameserializer.MappedFlattenedTurn]
 	late_frames: list[gameserializer.MappedFlattenedTurn]
@@ -19,6 +22,7 @@ def get_score(game: gameserializer.Game) -> int:
 def filter_by_score(games: gameserializer.Games, min_score: int) -> gameserializer.Games:
 	return [game for game in games if get_score(game) >= min_score]
 
+# remove losing frames from data
 def truncate_game_at_last_fruit(game: gameserializer.Game) -> gameserializer.Game:
 	for i, frame in enumerate(game):
 		if snake_body_length(frame) == get_score(game) + 1:
@@ -29,6 +33,7 @@ def truncate_game_at_last_fruit(game: gameserializer.Game) -> gameserializer.Gam
 def truncate_all_at_last_fruit(games: gameserializer.Games) -> gameserializer.Games:
 	return [truncate_game_at_last_fruit(game) for game in games]
 
+# create three boards to differentiate objects in grid
 def create_separate_boards(board: list[float]) -> tuple[list[float], list[float], list[float]]:
 	head_board = [0]*len(board)
 	body_board = head_board.copy()
@@ -65,6 +70,7 @@ def map_board_to_next_move(game: gameserializer.Game) -> gameserializer.MappedFl
 def map_all_to_next_move(games: gameserializer.Games) -> gameserializer.MappedFlattenedGames:
 	return [map_board_to_next_move(game) for game in games]
 
+# methods to rotate boards to different directions to provide more training data; unused because they bloat the dataset and reduce performance
 def rotate_direction_90_degrees(direction: str) -> str:
 	if direction == "UP":
 		return "RIGHT"
@@ -77,10 +83,11 @@ def rotate_direction_90_degrees(direction: str) -> str:
 	
 	raise ValueError(f"Invalid direction: {direction}")
 
+
 def rotate_turn_90_degrees(turn: gameserializer.Turn) -> gameserializer.Turn:
 	rotated = gameserializer.Turn(
 		direction=rotate_direction_90_degrees(turn.direction),
-		board=[list(row) for row in zip(*turn.board[::-1])]
+		board=[list(row) for row in np.rot90(turn.board, k=-1)]
 	)
 
 	return rotated
@@ -126,14 +133,11 @@ OPPOSITE_DIRECTION_MAP = {
 	DIRECTION_LABEL_MAP["LEFT"]: DIRECTION_LABEL_MAP["RIGHT"]
 }
 
+# converts the direction label to an expected/result tensor
 def conv_direction_to_y_tensor(direction: str, curr_direction: str) -> list[int]:
 	directions = [0, 0, 0, 0]
 
 	directions[DIRECTION_LABEL_MAP[direction]] = 1
-
-	# opposite direction is invalid, so use 0 to bias against
-
-	# directions[OPPOSITE_DIRECTION_MAP[DIRECTION_LABEL_MAP[curr_direction]]] = 0
 
 	return directions
 
